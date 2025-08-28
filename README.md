@@ -1,7 +1,4 @@
-This guide outlines a comprehensive project to deploy a sample Python application on a local Minikube cluster using a GitOps workflow. Terraform manages the infrastructure, Istio handles the service mesh, and ArgoCD automates deployments. The process is fully automated with GitHub Actions, which uses AWS OIDC to authenticate with AWS for secrets management and email notifications via SES, eliminating the need for long-lived credentials.
-
------
-
+# Istio-Argocd in Minikube cluster with terraform and Github Actions, Integreting AWS SES and Secrets Manager
 ### Prerequisites 🛠️
 
 Ensure you have the following installed on your local machine:
