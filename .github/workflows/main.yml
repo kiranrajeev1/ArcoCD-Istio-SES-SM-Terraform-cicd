@@ -1,0 +1,82 @@
+name: CI/CD Pipeline with Minikube, Terraform, ArgoCD, and Istio
+
+on:
+  push:
+    branches:
+      - main
+
+# Grant the GHA runner permissions to get an OIDC token
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::<YOUR_AWS_ACCOUNT_ID>:role/<YOUR_IAM_ROLE_NAME>
+          aws-region: <YOUR_AWS_REGION>
+
+      - name: Install Minikube
+        run: |
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+          minikube start --driver=docker --cpus 4 --memory 8192
+
+      - name: Wait for Minikube to be ready
+        run: |
+          minikube kubectl -- get pods -A
+
+      - name: Get Docker Hub credentials from AWS Secrets Manager
+        id: dockerhub-secret
+        uses: aws-actions/aws-secretsmanager-get-secret@v1
+        with:
+          secret-id: dockerhub-credentials
+          parse-json-secrets: true
+
+      - name: Login to Docker Hub
+        run: docker login -u ${{ steps.dockerhub-secret.outputs.username }} -p ${{ steps.dockerhub-secret.outputs.password }}
+
+      - name: Build and push Docker image
+        id: docker_build
+        run: |
+          IMAGE_TAG=$(echo $GITHUB_SHA | cut -c1-8)
+          docker build . -t <YOUR_DOCKERHUB_USERNAME>/my-python-app:$IMAGE_TAG
+          docker push <YOUR_DOCKERHUB_USERNAME>/my-python-app:$IMAGE_TAG
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Update Kubernetes manifest with new image tag
+        run: |
+          sed -i "s|<TAG>|${{ env.IMAGE_TAG }}|g" manifests/app.yaml
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve -var="github_owner=<YOUR_GITHUB_USERNAME>" -var="github_repo=<YOUR_REPO_NAME>"
+
+      - name: Get ArgoCD initial password
+        id: argocd-password
+        run: |
+          sleep 60
+          ARGOCD_PASS=$(minikube kubectl -- -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+          echo "ARGOCD_PASSWORD=$ARGOCD_PASS" >> $GITHUB_ENV
+
+      - name: Send email notification
+        run: |
+          aws ses send-email \
+            --from "<VERIFIED_SES_EMAIL>" \
+            --destination "ToAddresses=<RECIPIENT_EMAIL>" \
+            --message file://<(echo '{"Subject": {"Data": "Deployment Succeeded"}, "Body": {"Text": {"Data": "Terraform and ArgoCD deployment succeeded. ArgoCD admin password: ${{ env.ARGOCD_PASSWORD }}"}}}')
