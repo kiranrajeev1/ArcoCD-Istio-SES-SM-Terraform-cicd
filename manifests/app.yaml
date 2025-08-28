@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-python-app
+  namespace: dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-python-app
+  template:
+    metadata:
+      labels:
+        app: my-python-app
+    spec:
+      containers:
+      - name: my-python-app
+        image: docker.io/<YOUR_DOCKERHUB_USERNAME>/<YOUR_REPO_NAME>:<TAG>
+        ports:
+        - containerPort: 5000
