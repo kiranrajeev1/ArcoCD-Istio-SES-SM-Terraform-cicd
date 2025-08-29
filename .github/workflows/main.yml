@@ -35,8 +35,7 @@ jobs:
         run: |
           minikube kubectl -- get pods -A
 
-      - name: Get Docker Hub credentials from AWS Secrets Manager
-        id: dockerhub-secret
+      - name: Retrieve secret from AWS Secrets Manager
         uses: aws-actions/aws-secretsmanager-get-secret-value@v2
         with:
           secret-id: dockerhub-credentials
