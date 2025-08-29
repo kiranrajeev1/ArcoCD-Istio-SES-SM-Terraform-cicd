@@ -37,7 +37,7 @@ jobs:
 
       - name: Get Docker Hub credentials from AWS Secrets Manager
         id: dockerhub-secret
-        uses: aws-actions/aws-secretsmanager-get-secret@v2
+        uses: aws-actions/aws-secretsmanager-get-secret-value@v2
         with:
           secret-id: dockerhub-credentials
           parse-json-secrets: true
