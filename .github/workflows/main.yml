@@ -21,8 +21,8 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
-          role-to-assume: arn:aws:iam::<YOUR_AWS_ACCOUNT_ID>:role/<YOUR_IAM_ROLE_NAME>
-          aws-region: <YOUR_AWS_REGION>
+          role-to-assume: arn:aws:iam::982534382107:role/arn:aws:iam::982534382107:role/ses-role
+          aws-region: us-east-1
 
       - name: Install Minikube
         run: |
@@ -42,14 +42,14 @@ jobs:
           parse-json-secrets: true
 
       - name: Login to Docker Hub
-        run: docker login -u ${{ steps.dockerhub-secret.outputs.username }} -p ${{ steps.dockerhub-secret.outputs.password }}
+        run: docker login -u ${{ steps.dockerhub_secrets.outputs.DOCKERHUB_USERNAME }} -p ${{ steps.dockerhub-secret.outputs.DOCKERHUB_TOKEN }}
 
       - name: Build and push Docker image
         id: docker_build
         run: |
           IMAGE_TAG=$(echo $GITHUB_SHA | cut -c1-8)
-          docker build . -t <YOUR_DOCKERHUB_USERNAME>/my-python-app:$IMAGE_TAG
-          docker push <YOUR_DOCKERHUB_USERNAME>/my-python-app:$IMAGE_TAG
+          docker build . -t kiran700/my-python-app:$IMAGE_TAG
+          docker push kiran700/my-python-app:$IMAGE_TAG
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
       - name: Update Kubernetes manifest with new image tag
@@ -65,7 +65,7 @@ jobs:
         run: terraform init
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve -var="github_owner=<YOUR_GITHUB_USERNAME>" -var="github_repo=<YOUR_REPO_NAME>"
+        run: terraform apply -auto-approve -var="github_owner=kiranrajeev1" -var="https://github.com/kiranrajeev1/ArcoCD-Istio-SES-SM-Terraform-cicd.git"
 
       - name: Get ArgoCD initial password
         id: argocd-password
@@ -77,6 +77,6 @@ jobs:
       - name: Send email notification
         run: |
           aws ses send-email \
-            --from "<VERIFIED_SES_EMAIL>" \
-            --destination "ToAddresses=<RECIPIENT_EMAIL>" \
+            --from "kiranrajeev4795@gmail.com" \
+            --destination "ToAddresses=aneekaaws@gmail.com" \
             --message file://<(echo '{"Subject": {"Data": "Deployment Succeeded"}, "Body": {"Text": {"Data": "Terraform and ArgoCD deployment succeeded. ArgoCD admin password: ${{ env.ARGOCD_PASSWORD }}"}}}')
